@@ -1,0 +1,3 @@
+name: docker-build-secret-repro
+runtime: nodejs
+description: Reproduction case for docker-build secret issue with CodeArtifact credentials

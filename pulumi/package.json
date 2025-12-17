@@ -1,0 +1,17 @@
+{
+  "name": "pulumi-docker-build-secret-repro",
+  "version": "1.0.0",
+  "description": "Pulumi program to reproduce docker-build secret issue",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@pulumi/docker-build": "^0.0.15",
+    "@pulumi/pulumi": "^3.212.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

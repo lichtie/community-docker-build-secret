@@ -15,11 +15,11 @@ CodeArtifact tokens are short-lived and change on each `pulumi up` run. We want 
 
 1. **Image Configuration**: All Docker image inputs (buildArgs, tags, context, etc.) are defined in a single `imageConfig` object for maintainability.
 
-2. **Replacement Trigger**: A trigger value (`configTrigger`) is created by stringifying the `imageConfig`. This changes whenever any configuration input changes.
+2. **Replacement Trigger**: A trigger value `imageConfig` changes whenever any configuration input changes.
 
 3. **Stash Resource**: A `pulumi.Stash` stores the CodeArtifact token with:
 
-   - `replacementTrigger`: Set to `configTrigger` - causes the Stash to replace when config changes
+   - `replacementTrigger`: Set to `imageConfig` - causes the Stash to replace when config changes
    - `ignoreChanges: ["input"]`: Prevents the Stash from updating when the token value changes
 
 4. **Image Build**: The Docker image uses the token from the Stash as a build arg, ensuring it gets the fresh token whenever the Stash is replaced.
@@ -85,7 +85,7 @@ pulumi up
 
 **Expected Result:**
 
-- The `tokenStash` Stash is replaced (because `configTrigger` changed)
+- The `tokenStash` Stash is replaced (because `imageConfig` changed)
 - The `imageFixed` Docker image is replaced (because the Stash output changed)
 - The new token value is captured and used in the build
 - Outputs show the fresh token value
@@ -123,7 +123,7 @@ pulumi up
 
 **Expected Result:**
 
-- The `tokenStash` Stash is replaced (because `configTrigger` changed)
+- The `tokenStash` Stash is replaced (because `imageConfig` changed)
 - The `imageFixed` Docker image is replaced (because both the Stash output and buildArgs changed)
 - A fresh token is captured and used
 
@@ -153,7 +153,7 @@ Compare the `tokenPreview` value across runs to verify:
 awsCodeArtifactToken (changes each run)
          ↓
     tokenStash (Stash)
-         ↓ (replacementTrigger: configTrigger)
+         ↓ (replacementTrigger: imageConfig)
          ↓ (ignoreChanges: ["input"])
          ↓
     tokenStash.output
@@ -182,4 +182,3 @@ pulumi stack rm dev
 
 - The token is unsecreted in outputs for testing purposes. In production, you will want to remove or mask this.
 - The `imageConfig` object should be updated whenever you need to change image build parameters.
-- The `configTrigger` is automatically recalculated whenever `imageConfig` changes.

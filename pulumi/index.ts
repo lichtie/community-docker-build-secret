@@ -35,9 +35,6 @@ const imageConfig = {
   ],
 };
 
-// Create a simple string representation of the config for the replacement trigger
-const configTrigger = JSON.stringify(imageConfig);
-
 // Use Stash to store the CodeArtifact token
 // The Stash will be replaced whenever the image inputs change (via replacementTrigger)
 // This ensures a fresh token is captured whenever we're rebuilding the image anyway
@@ -47,7 +44,7 @@ const tokenStash = new pulumi.Stash(
     input: pulumi.secret(awsCodeArtifactToken),
   },
   {
-    replacementTrigger: configTrigger,
+    replacementTrigger: imageConfig,
     ignoreChanges: ["input"],
   }
 );

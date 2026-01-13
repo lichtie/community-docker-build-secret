@@ -44,7 +44,11 @@ const tokenStash = new pulumi.Stash(
     input: pulumi.secret(awsCodeArtifactToken),
   },
   {
-    replacementTrigger: imageConfig,
+    replacementTrigger: {
+      imageConfig,
+      context: new pulumi.asset.FileArchive(imageConfig.context.location),
+      dockerfile: new pulumi.asset.FileAsset(imageConfig.dockerfile.location),
+    },
     ignoreChanges: ["input"],
   }
 );

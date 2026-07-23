@@ -1,39 +1,38 @@
-FROM node:20-slim
+FROM node:24-slim
 
 # Build arguments for non-sensitive configuration
-# These are fine as ARGs because they don't change frequently
 ARG AWS_CODEARTIFACT_DOMAIN
 ARG AWS_ACCOUNT_ID
 ARG AWS_REGION
+ARG CODEARTIFACT_REPO=pose-repo
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Use BuildKit secret mount for the CodeArtifact token
-# This does NOT affect the build cache - only the actual code/dependencies do
-# The secret is mounted at build time but never stored in the image
-RUN --mount=type=secret,id=codeartifact_token \
-    if [ -f /run/secrets/codeartifact_token ]; then \
-        TOKEN=$(cat /run/secrets/codeartifact_token); \
-        echo "==========================================="; \
-        echo "Simulating CodeArtifact authentication:"; \
-        echo "  Domain: ${AWS_CODEARTIFACT_DOMAIN}"; \
-        echo "  Account: ${AWS_ACCOUNT_ID}"; \
-        echo "  Region: ${AWS_REGION}"; \
-        echo "  Token: [REDACTED - from secret mount]"; \
-        echo "==========================================="; \
-        echo "In a real scenario, this would configure npm:"; \
-        echo "  npm config set registry https://${AWS_CODEARTIFACT_DOMAIN}-${AWS_ACCOUNT_ID}.d.codeartifact.${AWS_REGION}.amazonaws.com/npm/my-repo/"; \
-        echo "  npm config set //.../:_authToken \$TOKEN"; \
-        echo "But for this reproduction, we'll use the public npm registry"; \
-    else \
-        echo "No CodeArtifact token provided, using default npm registry"; \
-    fi
-
-# Install dependencies
-RUN npm ci
+# Use BuildKit secret mount for the CodeArtifact token.
+# Configures npm against CodeArtifact and runs npm ci so an invalid/expired
+# token fails the build (401) instead of silently falling back to public npm.
+RUN --mount=type=secret,id=codeartifact_token,required=true \
+    set -eu; \
+    TOKEN=$(cat /run/secrets/codeartifact_token); \
+    if [ -z "$TOKEN" ]; then \
+        echo "ERROR: codeartifact_token secret is empty" >&2; \
+        exit 1; \
+    fi; \
+    REGISTRY_HOST="${AWS_CODEARTIFACT_DOMAIN}-${AWS_ACCOUNT_ID}.d.codeartifact.${AWS_REGION}.amazonaws.com"; \
+    REGISTRY_PATH="//${REGISTRY_HOST}/npm/${CODEARTIFACT_REPO}/"; \
+    REGISTRY_URL="https:${REGISTRY_PATH}"; \
+    echo "Configuring npm for CodeArtifact:"; \
+    echo "  Domain: ${AWS_CODEARTIFACT_DOMAIN}"; \
+    echo "  Account: ${AWS_ACCOUNT_ID}"; \
+    echo "  Region: ${AWS_REGION}"; \
+    echo "  Repo: ${CODEARTIFACT_REPO}"; \
+    echo "  Registry: ${REGISTRY_URL}"; \
+    npm config set registry "${REGISTRY_URL}"; \
+    npm config set "${REGISTRY_PATH}:_authToken" "${TOKEN}"; \
+    npm ci
 
 # Copy application code
 COPY . .
